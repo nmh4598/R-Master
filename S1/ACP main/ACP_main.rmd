@@ -1,0 +1,189 @@
+---
+title: "DM Analyse de Données"
+author: "NGUYEN_DHENNIN_PHAM"
+date: "22/11/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(FactoMineR)
+```
+# Devoir maison
+### Importer les données du jeu de données alcool
+```{r }
+alcool <- read.csv("alcool.csv",row.names =1,sep=";", comment.char = "#",stringsAsFactors = TRUE)
+```
+
+### 1. Programmer une fonction cr qui centre et réduit un tableau de données.
+```{r}
+ecartype = function(x){
+  sqrt(mean(x^2)-(mean(x))^2)
+}
+cr <- function(X){
+  n <- nrow(X)
+  moyennes <- apply(X, FUN = mean, MARGIN = 2)
+  moyennes <- matrix(rep(moyennes, n), nrow = n, byrow = T)
+  ectypes <- apply(X, FUN = ecartype, MARGIN = 2)
+  ectypes <- matrix(rep(ectypes,n), nrow = n, byrow = T)
+  return((X-moyennes)/ectypes)
+}
+alcool_cr <- cr(alcool)
+alcool_cr
+
+```
+
+### 2. Programmer une fonction acp qui réalise les calculs de l’ACP (on donnera en entrée le tableau centré réduit)
+```{r}
+acp_main<- function(Z){
+  n <- nrow(Z)
+  Z <- cr(Z)  #Z est le tableau centré-reduit du tableau entré
+  Z <- as.matrix(Z,nrow=n,byrow=T)
+  b<- t(Z)%*%Z/nrow(Z)   #Matrice de corrélation de Z
+  c<-eigen(b)
+  d<- c$values  #les valeur propres
+  e <- c$vectors #les vecteurs propres
+  inertie<-d/sum(d) # l’inertie axe par axe (en pourcentage)
+  Coord_Ind <- Z%*%e # coordonnées des individus sur les axes (pour 3 axes)
+  Coord_Var=e*(rep(1,ncol(Z))%*%sqrt(t(eigen(b)$values))) # coordonnées des variables sur les axes (pour 3 axes)
+  rownames(Coord_Var)=colnames(Z)
+  for (i in seq(0,ncol(Z),2)){ # il y a sens opposé avec PCA en FactomineR au colonne 2 et 4 donc, nous changeons les signes, nous expliquerons en détail dans la comparaison avec les résultats de l'ACP 
+    Coord_Ind[,i]=-Coord_Ind[,i]
+    Coord_Var[,i]=-Coord_Var[,i]
+  }
+  a <- list(eig=inertie,ind=Coord_Ind,var=Coord_Var)
+  return(a)
+}
+ACP_main_alcool<-acp_main(alcool)
+```
+##### — calcul de l’inertie axe par axe (en pourcentage) :
+```{r}
+ACP_main_alcool$eig
+#barplot(ACP_main_alcool$eig)
+```
+
+##### — coordonnées des variables sur les axes (pour 3 axes) :
+```{r}
+ACP_main_alcool$var[,1:3]
+```
+
+##### — coordonnées des individus sur les axes (pour 3 axes) :
+```{r}
+ACP_main_alcool$ind[,1:3]
+```
+##### Comparer avec la fonction PCA de FactoMineR.
+```{r}
+Acp_alcool <- PCA(alcool_cr)
+```
+
+```{r}
+# Comparaison de l'inertie axe par axe : 
+Acp_alcool$eig[,2] #avec fonction PCA
+ACP_main_alcool$eig #avec fonction acp_main
+
+# Nous remarquons que nous avons exactement les mêmes inerties (or que PCA est en % et nous les pourcentages sont sous format décimal).
+```
+
+```{r}
+# Comparaison des coordonnées des variables sur les axes (pour 3 axes) :
+Acp_alcool$var$coord[,1:3] #avec fonction PCA
+ACP_main_alcool$var[,1:3] #avec fonction acp_main
+
+# Comparaison des coordonnées des individus sur les axes (pour 3 axes) :
+Acp_alcool$ind$coord[,1:3] #avec fonction PCA
+ACP_main_alcool$ind[,1:3] #avec fonction acp_main
+
+#Résultats de la comparaison:
+
+#Après avoir changé le signe des deuxième et quatrième colonnes des tableaux coordonnées des individus et des variables, nous avons le même résultat par rapport aux coordonnées de la fonction PCA. Mais, ce changement de signe n'est pas forcément nécessaire, nous le faisons juste pour obtenir le même résultat qu'avec la fonction PCA. 
+#Et, en utilisant ces coordonnées pour l'exercice 3, nos graphiques seront exactement les mêmes que ceux de la fonction PCA, ce qui facilite l'évaluation de nos fonctions.
+
+#Avant le changement de signe de ces 2 colonnes, nous remarquons que pour les coordonnées des individus et des variables, les axes 1,3 et 5 sont identiques, cepedendant, pour l'axe 2 et 4, les valeurs sont de signe opposé mais de même valeur.
+
+#Nous allons essayer d'expliquer l'opposition des signes de ces deux axes entre nos résultats de la fonction PCA et de la fonction acp_main crée, et si cela a une incidence. 
+
+#L’orientation des axes est complètement arbitraire et peut différer d’un logiciel à l’autre. Ainsi, le signe opposé des coordonnées des individus (i.e des variables) sur l'axe 2 et 4 n’a donc pas de réelle signification. 
+
+#On remarquera que le signe de cette coordonnée n’a pas de sens. Cependant, si deux individus (i.e variables) ont des coordonnées de signe opposé, nous pouvons interpréter cela en disant qu’ils s’opposent sur cet axe.
+
+#Pour expliquer ce phénomène, nous sommes d'avis que lorsque la fonction PCA calcule les vecteurs propres de la matrice de corrélation, elle donne les vecteurs propres de signe opposé, donc le changement de signe correspond à notre différence sur l'axe 2 et 4 pour les coordonnées des variables et des individus.
+```
+
+### 3. Programmer une fonction plotacp qui réalise les graphiques de l’ACP (on donnera en entrée la liste contenant les calculs de l’ACP et les axes choisis et le type de graphique, “variables” ou “individus”)
+```{r}
+plotacp <-function(don,choix,axe1,axe2){
+  ACP_main_don<-acp_main(don)
+  nom_axe1 <- paste("Dim",axe1,"(",round(ACP_main_don$eig[axe1]*100,2),"%)",sep=" ")
+  nom_axe2 <- paste("Dim",axe2,"(",round(ACP_main_don$eig[axe2]*100,2),"%)",sep=" ")
+  if (choix=='ind'){
+    plot(ACP_main_don$ind[,axe1],ACP_main_don$ind[,axe2],lwd=2,ylim=c(-4.5,3),main="PCA graph of individuals",xlab=nom_axe1,ylab=nom_axe2)
+    abline(h = 0,lty=2)
+    abline(v = 0,lty=2)
+    text(ACP_main_don$ind[,axe1],ACP_main_don$ind[,axe2],rownames(ACP_main_don$ind),pos=1)
+  } else{
+    plot(ACP_main_don$var[,axe1],ACP_main_don$var[,axe2],lwd=2,main="PCA graph of variables",xlab=nom_axe1,ylab=nom_axe2,xlim=c(-1,1),ylim=c(-1,1),pch=16,asp=1)
+    
+    radius <- 1
+    theta <- seq(0, 2 * pi, length = 200)
+    lines(x = radius * cos(theta), y = radius * sin(theta))
+
+    s <- seq(length(ACP_main_don$var[,axe1])) 
+    arrows(0,0, ACP_main_don$var[s,axe1], ACP_main_don$var[s,axe2])
+    text(ACP_main_don$var[,axe1],ACP_main_don$var[,axe2],rownames(ACP_main_don$var),pos=4)
+    abline(h=0,lty=2)
+    abline(v=0,lty=2)
+  }
+}
+```
+
+#### Réalisons les graphiques en le comparant à ceux de la fonction PCA.
+```{r}
+plotacp(alcool,'ind',1,2) #fonction apc_main
+plot(Acp_alcool,choix='ind',c(1,2)) #fonction PCA
+
+plotacp(alcool,'var',2,3) #fonction acp_main
+plot(Acp_alcool,choix='var',c(2,3)) #fonction PCA
+
+#Nos graphiques des individus et des variables selon les axes renseignés sont identiques à ceux affichés par la fonction PCA.
+```
+
+
+### 4. Programmer une fonction indsup qui calcule les coordonnées des individus supplémentaires (pour 3 axes).
+```{r}
+# La projection des individus supplémentaires  est une fonctionnalité importante de l’analyse en composantes principales. L’objectif est de positionner de nouveaux individus par rapport à ceux  qui ont contribué à la construction du repère factoriel.
+
+indsup <- function(newind,X){     #newind est le(s) individu(s) supplémetaire(s), X est le tableau initial
+  nbnewind = length(newind[,1])   
+  mean=t(matrix(apply(X,2,mean),nrow=ncol(X),ncol=nbnewind)) #Matrice concernant les moyennes des colonnes de l'ancien tableau X, avec la dimension identique à la matrice newind. Elle nous aidera à créer un tableau centré réduit de newind.
+  ectype=t(matrix(apply(X,2,ecartype)*sqrt((nrow(X)-1)/nrow(X)),nrow=ncol(X),ncol=nbnewind)) #identiquement avec ecartype
+  newind_cr = (newind-mean)/ectype  #Réalisons le tableau centré-réduite pour les individus supplémetaires
+  Z <-cr(X)    #Nous utilisons le tableau centré-réduit de X 
+  n <- nrow(Z)
+  Z <- as.matrix(Z,nrow=n,byrow=T)
+  b<- t(Z)%*%Z/nrow(Z) 
+  c<-eigen(b)
+  e <- c$vectors 
+  Coord_Ind <- newind_cr%*%e  #Coordonnées des individus supplémentaires, sur nos anciens axes.
+  return(Coord_Ind)
+}
+#Pour tester si la fonction indsup nous renvoie les coordonnées correctes, nous prenons le 11ème individu (supplémetaire) comme le 7ème individu du tableau alcool: Russie.
+newind <- as.matrix(alcool[7,])
+indsup(newind,alcool)[,1:3] 
+
+#Prenons maintenant les 2 nouveaux individus, 11ème comme Russie, 12ème comme Italy.
+newind <- as.matrix(alcool[c(2,7),])
+indsup(newind,alcool)[,1:3]
+
+#Les résultats sont corrects par rapport aux coordonnées des individus précédentes (par l'ACP ou par acp_main() ), les nouvelles coordonnées sont toutes correctes.
+```
+
+
+
+
+
+
+
+
+
+
+
