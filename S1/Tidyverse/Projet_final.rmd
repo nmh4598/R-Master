@@ -1,0 +1,356 @@
+---
+title: "Projet R M1 MAS"
+author: "NGUYEN_PHAM_BEYE_DHENNIN"
+date: "13/11/2021"
+output: html_document
+---
+
+# Projet : Partie 1
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library('tidyverse') 
+library('ggplot2') 
+library('lmtest')
+library('corrplot')
+library('rquery')
+
+```
+
+## Greatest Albums
+### 1. Représenter graphiquement le nombre d’albums inclus dans le top par année. Commenter les résultats.
+```{r,warning=FALSE,results='hide',message=FALSE}
+top500 <- read.csv("albums.csv", header=TRUE, stringsAsFactors=FALSE  )
+ggplot(top500, aes(Year)) + geom_bar()  + xlab("Year") + ylab("Nombre d’albums présentes dans le top 1000")
+```
+
+### 2. Afficher le nom et le nombre d’albums pour les artistes ayant au moins 5 albums dans le top. L’affichage se fera par ordre décroissant de nombre d’albums.
+```{r}
+top500 %>% 
+  count(Artist) %>% 
+  filter(n>=5) %>% 
+  arrange(desc(n)) 
+```
+
+### 3. Quel est le genre le plus représenté dans le Top 500 de Rolling Stones?
+```{r}
+top500 %>% 
+  count(Genre) %>% 
+  arrange(desc(n)) %>% 
+  head(1)
+
+## Le genre le plus représenté dans le Top 500 de Rolling Stones est le Rock, en apparaissant 249 fois.
+```
+
+
+## Chansons
+### Importer le fichier dans un tableau nommé tracks.
+```{r}
+tracks <- read.csv("tracks.csv", header=TRUE, stringsAsFactors=FALSE  )
+```
+
+### 1. Faire un top des 1000 chansons les plus dansables (variable danceability). En cas d’égalité, départager les chansons en fonction de leur popularité.
+```{r echo = TRUE, results = 'hide'}
+top_1000_dansable <- tracks %>%
+  arrange(desc(danceability),Popularity) %>%
+  distinct(Track.Name,.keep_all = TRUE) %>% 
+  head(1000)
+#View(top_1000_dansable)
+```
+
+#### • Quels sont les 9 artistes les plus représentés ?
+```{r}
+top_1000_dansable %>% 
+  count(Artist.Name) %>% 
+  arrange(desc(n)) %>% 
+  head(9)
+```
+#### • Et la classe (variable Class) la plus représentée ? Illustrer la répartition des classes dans ce top.
+```{r}
+top_1000_dansable %>% 
+  count(Class) %>% 
+  arrange(desc(n)) %>%
+  head(1)
+
+## La classe la plus représentée est la classe 5, en apparaissant 473 fois.
+```
+
+```{r}
+pie((top_1000_dansable%>%count(Class))$n,labels = (top_1000_dansable%>%count(Class))$Class)
+
+top_1000_dansable %>% ggplot() + aes(x = Class) + geom_bar() + xlab("Classe") + ylab("Nombre de classes présentes dans le top 1000")
+
+## Nous avons choisi d'illustrer la répartition des classes dans ce top de deux manières différentes.
+## En effet, pie chart est très visuel avec ses couleurs et permet d'avoir toutes les valeurs. Quant à l'histogramme, le fait de pouvoir choisir le nom des axes permet de rendre ce graphique aussi très compréhensible.
+
+## On remarque qu'il y a une grande présence de classe 5 et 9.
+```
+### 2. Représenter graphiquement les variables Popularity et danceability par classe.
+```{r,fig.width = 10.5, fig.height = 5.5}
+ggplot(tracks) + geom_col(aes(y=Popularity,x=Class)) + ylab("Popularity") + xlab("Classe")
+ggplot(tracks) + geom_col(aes(y=danceability,x=Class,color='red')) + ylab( "danceability") + xlab("Classe")
+
+```
+
+### 3. Trouver le(s) artiste(s) (Artist Name) ayant la popularité moyenne la plus élevée parmi ceux qui ont plus de 10 titres inclus dans tracks.
+```{r}
+#Trions d'abord les artistes ayant plus de 10 titres inclus dans tracks.
+artiste_avec_plus_de_10_titres <- tracks %>%
+  count(Artist.Name) %>%
+  filter(n>10) %>%
+  arrange(desc(n))
+
+tracks %>%
+  filter(Artist.Name %in% artiste_avec_plus_de_10_titres$Artist.Name) %>% #à l'aide du filtre, nous récupérons seulement les artistes ayant plus de 10 titres dans tracks
+  group_by(Artist.Name) %>%
+  summarise(mean_popularity=mean(Popularity)) %>%
+  arrange(desc(mean_popularity))
+
+```
+### 4. Enlever les lignes contenant des données manquantes. Répartir les chansons en fonction de leur popularité en quatre catégories de tailles égales (ou presque) nommées : TresPopulaire, Populaire, PeuPopulaire, PasPopulaire et ajouter une nouvelle colonne au tableau tracks contenant la catégorie de chaque chanson.
+```{r echo = TRUE, results = 'hide'}
+
+tracks2 <- tracks %>% 
+  drop_na() %>% 
+  mutate(categorie= case_when( #On crée une nouvelle colonne 'categorie' , puis on compare les Popularity avec les quartiles.
+    Popularity <= summary(drop_na(tracks)$Popularity)[2] ~ "PasPopulaire",
+    (Popularity > summary(drop_na(tracks)$Popularity)[2] & Popularity<=summary(drop_na(tracks)$Popularity)[3]) ~ "PeuPopulaire",
+    (Popularity > summary(drop_na(tracks)$Popularity)[3] & Popularity<=summary(drop_na(tracks)$Popularity)[5]) ~ "Populaire",
+    TRUE ~ "TresPopulaire"   
+  ))
+#tracks2
+
+```
+#### • Quelle est la classe la plus représentée dans la categorie TresPopulaire ? Commenter les résultats.
+```{r}
+tracks2 %>% 
+  filter(categorie=="TresPopulaire") %>% 
+  count(Class) %>% 
+  arrange(desc(n)) %>%
+  head(1)
+
+## La classe 10 est la plus représentée dans la categorie TresPopulaire, elle apparaît 1071 fois. 
+
+## Pour expliquer pourquoi cette classe est la plus représentée dans la catégorie TresPopulaire, nous pouvons revenir au graphique montrant la variable de Popularité par Classe (question 2).
+
+## Sur le graphique, nous pouvons clairement voir que la classe 10 a l'occurrence de popularité la plus forte, avec un grand écart d'occurrence par rapport aux autres classes. C'est pourquoi, ici dans la question 4, lorsque nous regroupons la categorie 'TresPopulaire' par classe, la classe 10 apparaît le plus.
+
+```
+#### • Parmi les artistes ayant un nombre de titres supérieur ou égal à la mediane du nombre de titres de chaque artiste de tracks, lequel a la plus grande proportion de ses chansons dans la catégorie TresPopulaire ?
+```{r}
+#artiste_avec_titres_sup_or_egal_mediane: on récupère les artistes ayant un nombre de titres supérieur ou égal à la mediane du nombre de titres de tracks 
+artiste_avec_titres_sup_or_egal_mediane <- tracks %>%
+  count(Artist.Name) %>%
+  filter(n>=median(n)) %>%
+  arrange(desc(n))
+
+tracks2 %>%
+  filter(Artist.Name %in% artiste_avec_titres_sup_or_egal_mediane$Artist.Name) %>%
+  filter(categorie=="TresPopulaire") %>% 
+  count(Artist.Name) %>% 
+  arrange(desc(n)) %>%
+  head(1)
+
+## L'artiste ayant la plus grand proportion de ses chansons dans la catégorie TresPopulaire est "AC/DC".
+
+```
+
+## Chansons et albums
+### 1. Pour le(s) artiste(s) ayant le plus grand nombre d’albums dans le Top 500 de Rolling Stones, représenter par des boxplots la popularité de leurs chansons contenues dans tracks. Commenter les résultats.
+```{r}
+
+top_artist = (top500 %>%
+  count(Artist) %>%
+  filter(n==max(n)) %>% 
+  arrange(desc(n)))$Artist
+
+ggplot(data=tracks %>% filter(Artist.Name %in% top_artist),aes(x=Artist.Name,y=Popularity)) + geom_boxplot()
+
+## Nous avons trouvé Bob Dylan, The Beatles et The Rolling Stones sont les artistes qui ont le plus grand nombre d’albums dans le Top 500 de Rolling Stones.
+
+## Le groupe The Beatles a la chanson la plus populaire de toutes, bien que leurs chansons soient toutes très populaires. Aussi, la concentration en popularité de leurs chansons se situe autour de 65-75.
+
+## Quant à Bob Dylan, la plus grande popularité qu'il a est d'environ 71, de même, ses chansons n'ont pas beaucoup de différence en popularité, tombant dans la gamme 63-70.
+
+## Enfin pour le groupe The Rolling Stones, le pic de popularité de la chanson se situe autour de 68, mais ses chansons ont une disparité de popularité en moyenne (du premier au troisième quartile) allant de 44 à 68.
+```
+### 2. Créer un tableau avec les artistes ayant au moins un album dans le Top 500. Pour chaque artiste le tableau contiendra également le nombre d’albums de l’artiste dans le Top 500 ainsi que la position de l’album le mieux classé. Pour ceux qui ont au moins une chanson dans le tableau tracks ajouter le nombre de ses chansons apparaissant dans tracks, leur popularité moyenne, la dansabilité moyenne, la durée minimale et maximale des chansons, ainsi que la classe dominante (celle attribuée au plus de titres).
+```{r}
+#à partir de top500, on garde les variables Album, Artist et on rajoute les variables nbalbumtop500 (le nombre d’albums de l’artiste dans le Top 500) ainsi que rankalbumtop500 (la position de l’album le mieux classé)
+topalbum <- top500 %>% 
+            group_by(Artist) %>% 
+            mutate(nbalbumtop500 = length(Artist)) %>% 
+            arrange(Artist,Number) %>%    
+            slice(1) %>% 
+            rename(rankalbumtop500=Number) %>% 
+            select(Album,Artist,nbalbumtop500,rankalbumtop500)
+#View(topalbum)  
+
+#Ici, nous avons les artistes de top500 ayant au moins 1 chanson dans tracks avec leur popularité moyenne, la dansabilité moyenne, la durée minimale et maximale des chansons, ainsi que la classe dominante.
+tracks4 <- tracks %>% 
+           filter(Artist.Name%in%top500$Artist) %>% 
+           group_by(Artist.Name) %>% 
+           summarise(mean_popularity=mean(Popularity),
+                     mean_danceability=mean(danceability),
+                     dureemax=max(duration_in.min.ms),
+                     dureemin=min(duration_in.min.ms),
+                     classdom=names(which.max(table(Class))),
+                     nbchansonsdanstrack = length(Artist.Name))
+#View(tracks4)
+
+#On fait une jointure gauche de topalbum avec tracks4 avec comme condition de jointure "Artist"="Artist.Name" pour le tableau final.
+au_moins_un_album <- left_join(topalbum,tracks4,by=c("Artist"="Artist.Name"))
+#View(au_moins_un_album)
+```
+### 3. Pour chaque Class apparaissant comme classe dominante dans le tableau précédent, afficher le nombre d’artistes pour lesquels cette classe dominante a été attribuée.
+```{r}
+au_moins_un_album %>% 
+  drop_na() %>% 
+  group_by(classdom) %>%
+  mutate(nbe_artist = length(Artist)) %>% 
+  arrange(desc(nbe_artist)) %>% 
+  slice(1) %>% 
+  rename(Classe_dominante=classdom,Nombre_artistes=nbe_artist) %>%
+  select(Classe_dominante,Nombre_artistes)
+
+```
+# Projet : Partie 2
+
+### 1. Représenter graphiquement le nombre d’albums inclus dans le top 10 par subgenre.
+```{r}
+new_subgenre <- top500 %>% 
+  count(Subgenre) %>% 
+  arrange(desc(n)) %>%
+  head(10)
+ggplot(new_subgenre, aes(Subgenre, n)) + geom_col() + coord_flip()
+
+## Il est intéressant de faire ce graphique car à présent, nous pouvons constater qu'en majorité, de nombreux albums n'ont pas de subgenre.
+```
+
+### 2. Quel est l'artiste ayant la durée maximale des chansons parmi ceux ayant au moins 5 albums dans top 500 de Rolling Stones?
+```{r}
+#On filtre les artistes ayant au moins 5 albums dans le top 500 de Rolling Stones.
+top5_500<-top500 %>% 
+  count(Artist) %>% 
+  filter(n>=5) 
+
+tracks %>% 
+  filter(Artist.Name%in%top5_500$Artist) %>% 
+  group_by(Artist.Name) %>% 
+  summarise(duree_max_ms=max(duration_in.min.ms), duree_max_min=(duree_max_ms/1000)/60 ) %>% 
+  arrange(desc(duree_max_ms))%>% 
+  head(1) 
+
+## C'est l'artiste Led Zeppelin qui a la durée maximale associée à l'une de ses chansons la plus longue, qui est de 665600 ms, c'est à dire 11.093 min.
+```
+
+### 3. Lien entre la dansabilité et la popularité dans tracks
+
+#### 3.1 Parmis les artistes ayant sortis au moins 5 chansons, avec une popularité moyenne d'au moins 70, afficher ceux ayant la plus haute dansabilité moyenne.
+
+```{r}
+artiste_avec_plus_de_5_titres <- tracks %>%  count(Artist.Name) %>%  filter(n>=5) %>%  arrange(desc(n))
+artiste_grande_popularite <- tracks %>% group_by(Artist.Name) %>% summarise(mean_popularity=mean(Popularity)) %>% filter(mean_popularity>=70)
+  
+new_tracks <- tracks %>%
+  filter(Artist.Name %in% artiste_avec_plus_de_5_titres$Artist.Name, Artist.Name %in% artiste_grande_popularite$Artist.Name) %>%
+  group_by(Artist.Name)%>%
+  summarise(mean_popularity=mean(Popularity), mean_danceability=mean(danceability))%>%
+  arrange(desc(mean_popularity))
+head(new_tracks,20)
+
+## Il est intéressant de faire le lien entre la dansabilité des chansons en moyenne des artistes, et la popularité de l'artiste en lui même : est-ce que un artiste doit forcément produire des chansons dansables pour être populaire ? On observe que pas forcément. Par exemple, avec l'artiste Surf Cuse qui a une grande popularité, il a cependant une dansabilité moyenne d'environ 0.35 (c'est-à-dire faible). En outre, on remarque quand même que la majorité des artistes populaires ont une moyenne de dansabilité sur leurs chansons forte.
+```
+#### 3.2 Etablir le lien entre la dansabilité des chansons en moyenne de tous les artistes de tracks, et la popularité en moyenne de l'artiste lui-même. 
+```{r}
+#Faisons une régression linéaire pour voir s'il y a corrélation entre la popularité et la dansabilité des chansons.
+reg_popularity<-lm(Popularity~danceability, data = tracks)
+summary(reg_popularity)
+
+##Ici on remarque qu'il n'y a pas de corrélations entre les variables popularity et danceability car R^2 = 0.02796 < 1. 
+
+##Cela veut dire que la popularité de l'artiste  n'est pas influencée par la dansabilité de ses chansons, ainsi une chanson peut être très dansable alors que son artiste n'est pas très populaire.
+```
+
+### 4. Etablir un tableau avec toutes les chansons dans tracks qui ont le même nom qu'un album dans le Top 500 de Rolling Stones avec l'artiste, la position de l'album, la chanson associé à un album, l'année, leur popularité moyenne ainsi que la dansabilité moyenne.
+```{r}
+#Ici, nous avons les chansons de tracks qui ont le même nom qu'un album dans le Top 500 de Rolling Stones, et parmis ces chansons, nous retrouvons des doublons. En effet, il y a 75 chansons mais pour certains artistes, il y a plusieurs versions de la même chanson. Par exemple: Black Sabbath avec la chanson Paranoid ou encore Chet Faker avec la chanson Low. Donc, il faut trouver les artistes ayant plusieurs versions de leurs chansons pour qu'on puisse les trier et faire la moyenne de popularité et de dansabilité. 
+
+tracks %>% 
+  drop_na() %>%
+  filter(Track.Name %in% top500$Album) %>% 
+  arrange(desc(Track.Name)) %>%
+  select(Artist.Name, Track.Name,Popularity,danceability)
+
+```
+```{r}
+tracks5 <- tracks %>%  
+           drop_na()%>% 
+           filter(Track.Name%in%top500$Album) %>% 
+           group_by(Artist.Name,Track.Name) %>% # ici on trouve la popularité moyenne, la dansabilité moyenne des artistes ayant les tracks doublons, donc il y a 62 chansons, if faut qu'on groupe_by(Artist.Name,Track.Name) car un artiste peut avoir plus d'une chanson.
+           summarise(mean_popularity=mean(Popularity),
+                     mean_danceability=mean(danceability)
+           )
+chansons_tracks_Top500 <- left_join(tracks5,top500,by=c("Track.Name"="Album")) %>% select(Artist.Name, Number, Track.Name, Year, mean_popularity, mean_danceability) %>% arrange(Number, Track.Name)
+chansons_tracks_Top500
+
+## On remarque par exemple que beaucoup de chansons, qui correspondent aux noms des albums du Top 500 de Rolling Stones, ont le même nom sans pour autant être du même artiste (car nous avons regroupé les doublons).
+```
+
+### 5.1 Ensuite, nous nous intéressons à l'influence mutuelle des variables, à partir desquelles nous pouvons conclure si la popularité est affectée par des facteurs importants ou non.
+
+En parlant d'analyse de données, une méthode statistique descriptive nous permet de condenser l'information contenue dans le tableau : c'est l'analyse des corrélations entre les variables.
+
+Donc en choisissant n'importe quelle paire de variables, on peut considérer leur corrélation. Mais, comment savoir quelles paires ont une corrélation élevée et notable et lesquelles ont une faible corrélation ?
+Pour cela, dans l'étape suivante, nous calculons la corrélation de toutes les paires de variables, et la représentation triangulaire nous aide à voir immédiatement les corrélations élevées car elles sont de couleur plus foncée.
+
+```{r echo = TRUE, results = 'hide'}
+print(cor(tracks2[3:17])) #nous donne les valeurs plus précises si nous voulons rechercher
+```
+
+```{r}
+corrplot(cor(tracks2[3:17]), type="upper",method="number", insig = "blank") #Les chiffres notables sont de couleur plus foncée
+```
+
+Nous voyons que les chiffres notables de couleur plus foncée sont 0.79;-0.76;-0.64 (corrélations fortes et modérées).
+
+#### L'influence mutuelle des variables:
+
+Nous en déduisons que 'energy' et 'loudness' sont corrélées positivement, avec un fort score de 0,79. On peut dire que les chansons qui sont rapides, fortes et bruyantes ont tendance à avoir les niveaux audio élévés, et vice versa.
+
+Les variables 'energy' et 'acousticness' sont corrélées fortement négativement, avec un score de -0,76. On peut en déduire que, les chansons qui sont rapides, fortes et bruyantes ne sont généralement pas celles qui sont avec une acoustique élevée. Au contraire, celles qui sont plus susceptibles d'utiliser des instruments acoustiques et non électroniques, ont moins d'énergie, sont lentes et moins bruyantes.
+
+Le troisième nombre notable dans le résultat ci-dessus est la corrélation modérée entre 'loudness'
+et 'acousticness', de -0.64. Les chansons avec une acoustique élevée ont tendance à avoir le niveau de décibels moins élevé, le bruit est moins fort.
+
+(Nous pouvons tracer le cercle de corrélation par l'ACP mais cela donne le même sens, de plus, nous ne pouvons pas collecter les chiffres comme le tableau ci-dessus alors nous ne le tracons pas ici.)
+
+### 5.2 Et maintenant, les relations avec la popularité?
+```{r}
+tracks2$Class <- as.factor(tracks2$Class)
+for (i in c(3,7,10,11)){
+  print(ggplot(data=tracks2,aes(x=Class,y=tracks2[,i])) + geom_boxplot(aes(fill=Class)) + labs(y=names(tracks2[3:16])[i-2]))}
+```
+
+Nous nous intéressons à la relation entre 'Popularity' et les autres caractéristiques d'une chanson. Remarquons que 'Popularity' a des corrélations très faibles (voir résultat d'étape print(cor(tracks2[3:17]))) avec les autres variables, alors que la popularité n'est fortement influencée par aucun facteur.
+
+Choisissons les 3 corrélations les plus élevées (hors corrélations avec 'Danceability' car nous avons commenté par une autre méthode ces résultats au début de la partie 2):
+
+#### 'Popularity' et 'Loudness': 0.11
+Le top 5 'Popularity' est de 'class' 1,4,5,9,10 (voir le boxplot). 
+Quatre sur cinq d'entre eux sont dans le top 5 ayant les médianes les plus élevées de 'Loudness'. 
+Il y a une corrélation faible et positive de 0.11 entre 'Popularity' et 'Loudness'.
+
+#### 'Popularity' et 'Acousticness': -0.13
+Il y a une corrélation négative de -0.13 entre 'Popularity' et 'Acousticness'.
+Par conséquent, le top 5 'Popularity'('class' 1,4,5,9,10) se trouve généralement aux valeurs 'Acousticness' moins élevées.
+
+#### 'Popularity' et 'Instrumentalness': -0.17
+Ici, nous avons Une autre corrélation négative de -0.17. 
+Par conséquent, bien que la plupart soient de faibles valeurs, le top 5 'Popularity'('class' 1,4,5,9,10) n'a pas les valeurs qui ont le niveau 'Instrumentalness' élevé (voir le boxplot).
+
+#### Autre variables: très faibles corrélations ('Speechiness -0.004, 'Valence' 0,06, etc)
+Nous avons fait les boxplots mais les phénomènes sont à peine visibles, donc ils ne sont pas aussi significatifs que les trois précédents.
+
+#### Conclusion: 
+La popularité n'est influencée fortement par aucun facteur. Il y a des facteurs comme plus de 'Loudness', moins de 'Instrumentalness' (évite de contenir du contenu vocal), moins de 'Acousticness' (évite d'avoir de l'électronique, d'avoir de l'énergie lente) qui sont des points qui peuvent être trouvés dans les chansons populaires, mais pas forcément.
+
