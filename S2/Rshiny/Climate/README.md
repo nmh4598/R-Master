@@ -77,6 +77,10 @@ Cette table représente les données annuelles des émissions de gaz à effet de
 L'application fournit une vue complète des origines des gaz, pour la comparaison et le suivi de phase. Tous les gaz provenant du comportement humain sont enregistrés, par exemple la combustion du charbon, du ciment, la combustion des terres ou des forêts, le gaz industriel, etc.
 Nous nous rendons compte que, même si nous nous rappelons toujours le réchauffement climatique, nos efforts n'ont pas vraiment été efficaces. La tendance des émissions est toujours à la hausse depuis les années 1990 (du monde), il y a un point positif que depuis 2010 environ, la croissance n'est pas aussi forte qu'avant, le graphique à ce stade ressemble presque à une ligne horizontale stable.
 Plus en détail, alors que quelques pays émettent encore de plus en plus de gaz, il y a certains pays qui ont fait un excellent travail en matière de protection de l'environnement comme la France, l'Allemagne, l'Italie, le Japon, etc dont les mesures pour limiter les émissions ont eu des résultats évidents.
+
+## Projet
+Ce projet à été réalisé dans le cadre du cours de Python pour la data science en 1<sup>re</sup> année de Master dans la filière Mathématiques appliquées, Statistique.
+
 <hr>
 <center>
 
