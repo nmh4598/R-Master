@@ -27,6 +27,7 @@ Sur la base de ce résultat, nous pouvons voir que par exemple, la Chine et les 
 <div align="center">
 <img src="https://github.com/nmh4598/R-Master/blob/main/S2/Rshiny/Climate/Image/Statistiques.png" style="min-height:'250px'"/>
 </div>
+
 - Choose CO2 Origin
 
 Lors de la sélection des catégories de CO2, l'application fournit des changements sur les deux graphiques sur la gauche des observations. Le line-graph nous permet de suivre les émissions du pays d'une année à l'autre des catégories sélectionnées. Le graphique à barres permet d’observer les émissions de CO2, mais par habitant de l'année sélectionnée.
