@@ -92,6 +92,10 @@ suite.
 ### Représentation des résultats
 On observe sur ce clusplot obtenu via la méthode K-means, qu’on a bien six groupes distincts.
 
+<div align="center">
+<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Classification/Image/Plot.png" width="70%" style="min-height:'250px'"/>
+</div>
+
 On notera qu’avec nos données, 37,2 % des variations sont portées par les deux premiers axes principaux. Non
 seulement les positions, ce clusplot nous montre également la densité individuelle de Pokémon de chaque groupe.
 Nous observons que pour des groupes de même niveau sur l'axe de la composante 1, ils seront séparés sur l'axe 2, et
@@ -107,6 +111,11 @@ première composante.
 ### Caractérisation des partitions obtenues
 On cherche à savoir ce qui caractérise les six groupes que l’on a obtenus afin de déterminer les critères qui les ont
 construits.
+
+<div align="center">
+<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Classification/Image/Caract%C3%A9ristiques.png" width="45%" style="min-height:'250px'"/>
+</div>
+
 Nous mettrons en évidence les caractéristiques intéressantes de chaque groupe comme suit:
 
 - Cluster 1: On peut dire que ce sont de très bons guerriers et qu'ils ont un avantage en termes d'attaque. Pour un
@@ -140,12 +149,21 @@ On cherche maintenant à représenter les informations détenues par les donnée
 à composantes principales.
 ### Représentation sur les axes principaux d’une ACP
 
+<div align="center">
+<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Classification/Image/PCA.png" width="45%" style="min-height:'250px'"/>
+</div>
+
 Le graphique ci-dessus nous permet d’observer que 48,8% et 58.8% des variances sont expliquées et conservées par
 les deux et trois premiers axes principaux respectivement.ce qui représente un taux important , sachant qu’on
 travaille sur un espace de dix dimensions.
 On peut donc utiliser ces axes afin de pouvoir représenter au mieux les données.
 
 ### Analyse de corrélation des variables avec les axes principaux
+
+<div align="center">
+<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Classification/Image/Var-PCA.png" width="45%" style="min-height:'250px'"/>
+</div>
+
 On remarque que :
 - La variable hp et et non corrélée avec against_poison, against_flying et against_ground.
 - Les deux variables catch_rate et hp sont négativement corrélés.
@@ -155,6 +173,11 @@ On peut observer aussi que les variables hp, sp_attack, attack et catch_rate con
 premier axe principal, puis les variables against_poison ,against_flying et against_ground contribut fortement à la
 création du deuxième axe principal.
 ### Répartition des individus dans le plan factoriel
+
+<div align="center">
+<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Classification/Image/Dim%203.png" width="45%" style="min-height:'250px'"/>
+</div>
+
 On représente ici les partitions des classes obtenues, sur trois dimensions.
 Cependant, comme nous l'avons vu, la réduction de dimensionnalité ne nous suffit pas pour visualiser le clustering de
 nos données, représenté par le chevauchement des clusters si nous n'utilisons que les 2 premières dimensions.
