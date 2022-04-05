@@ -1,0 +1,244 @@
+---
+title: "Classification_NGUYEN_PHAM_Younes"
+output: html_notebook
+---
+```{r warning=FALSE}
+library(tidyverse)
+library(ggplot2)
+library(NbClust)
+library(FactoMineR)
+library(ie2misc)
+library(NbClust)
+library(cluster)
+library(corrplot)
+library(factoextra)
+library(GGally)
+```
+
+# 1. Prise en main du jeu de données
+
+```{r}
+data<- read.csv("pokedex.csv",header = TRUE,sep=",", encoding = "UTF-8")
+#View(data)
+```
+
+## Compréhension et nettoyage du jeu de données
+## Données manquantes
+```{r warning=FALSE}
+data<-data %>% 
+  mutate_all(na_if,"")    # space to NA 
+
+# nombre manquantes chaque colonne  
+manquantes<-data %>% 
+  select(everything())%>%
+  summarise_all(funs(sum(is.na(.))))  
+
+data <- data %>% 
+  group_by(pokedex_number) %>% 
+  slice(1) %>% 
+  ungroup() %>%  # On ne pourra garder qu’une unique forme pour chacun ( choisir premier individu pour chaque formes )
+  mutate(nb = rowSums(is.na(.)))%>%    # nouvelle colonne= nbe manquantes pour chaque lignes    
+  select(-c("type_2","ability_2","ability_hidden",
+            "base_friendship","base_experience",
+            "egg_type_2","percentage_male"))%>%  # delete colonnes nbe manquantes >50
+  mutate(nb1 = rowSums(is.na(.))) %>% 
+  filter(nb1<1) # delete lignes avec nbe manquantes >0
+write.table(data,"data.txt",row.names=T,col.names=T,fileEncoding="UTF-8")
+# Verifier nombres manquantes 
+manquantes<-data %>% 
+  select(everything())%>%
+  summarise_all(funs(sum(is.na(.)))) 
+#View(data)
+#View(manquantes)
+```
+## Choix des variables 
+```{r}
+# Stat desc 
+df.quali <- data %>% 
+  select(c("name",
+           "status",
+           "japanese_name",
+           "german_name",
+           "species",
+           "type_1",
+           "ability_1",
+           "growth_rate",
+           "egg_type_1"))
+
+ggplot(df.quali)+ 
+  aes(x = status )+ geom_bar(position = "dodge", fill = "#46337E") + theme_gray()
+ggplot(df.quali)+ 
+  aes(x = type_1 )+ geom_bar(position = "dodge", fill = "#46337E") + theme_gray()
+ggplot(df.quali)+ 
+  aes(x = growth_rate )+ geom_bar(position = "dodge", fill = "#46337E") + theme_gray()
+ggplot(df.quali)+ 
+  aes(x = egg_type_1 )+ geom_bar(position = "dodge", fill = "#46337E") + theme_gray()
+
+```
+```{r}
+df.quanti<-data %>% 
+  select(-c("X",
+            "name",
+            "pokedex_number",
+            "status",
+            "japanese_name",
+            "german_name",
+            "species",
+            "type_1",
+            "ability_1",
+            "growth_rate",
+            "egg_type_1"))
+summary(df.quanti)
+for (i in 1:35) boxplot(df.quanti[,i], main=paste("Variable ",names(df.quanti)[i],sep=""))
+```
+```{r}
+ggcorr(df.quanti%>% select(-c("nb","nb1")), low = "navy", high = "darkred", hjust = 1, size = 3, label = TRUE,label_size = 2)
+```
+
+
+```{r}
+df.final<- data %>% 
+  select(c("hp","attack","defense","sp_attack","speed","weight_kg","sp_defense","catch_rate","egg_cycles","against_poison","against_ground","against_flying"))
+for (i in 1:12) boxplot(df.final[,i], main=paste("Variable ",names(df.final)[i],sep=""))
+```
+# Standardisation ?
+## La standardisation des données a pour objectif d’assurer une interopérabilité optimale des données, en vue de leur réutilisation. L’application d’une « commune mesure » permet d’améliorer la qualité des données, notamment pour des activités de data cleaning, data profiling et data matching.
+```{r}
+standardisation = function(x){
+  z <- (x - mean(x)) / madstat(x)
+  return( z)
+}
+# Si presence d’outliers (valeurs aberrantes) : on prefere utiliser l’´ecartmoyen absolu (mean absolute deviation)
+df.final[1:12] <-
+  apply(df.final[1:12], 2, standardisation)
+#View(df.final)
+# On n'a pas besoins de faire ca 
+```
+
+
+```{r, include=FALSE}
+pairs(df.final)
+```
+## 2. Classification des individus
+### CAH 
+#### On applique une CAH sur ces données avec la distance euclidienne et la stratégie d'agrégation de Ward
+```{r}
+d        = dist(df.final)
+cah.ward = hclust(d,method="ward.D")
+plot(cah.ward,hang=-1)
+# commentaires ? 
+```
+
+#### Regardons la courbe de perte d'inertie (on se contente des 20 premières valeurs pour ne pas "noyer" l'information importante)
+```{r}
+plot(rev(cah.ward$height)[1:20],type="b")
+# Le tracé de la perte d'inertie nous incite à choisir une partition en 3 groupes 
+```
+
+```{r}
+NbClust(df.final,min.nc = 2,max.nc = 10,method="ward.D",index="all")
+# C'est aussi une partition en 3 groupes qui obtient un vote majoritaire, nous confortant dans notre premier choix. Néanmoins, on peut déjà observé la variabilité des réponses apportées par les différents critères. Cela souligne l'importance de garder une inspection visuelle de la courbe d'inertie/dendrogramme.
+```
+#### Partition en 3 groupes
+```{r,include=FALSE}
+K=3
+gpe.ward = cutree(cah.ward,k=K)
+gpe.ward
+```
+```{r,include=FALSE}
+plot(cah.ward,hang=-1)
+rect.hclust(cah.ward, K, border ="red")
+```
+```{r,include=FALSE}
+clusplot(df.final,gpe.ward, labels=4, main="CAH", col.p=gpe.ward, color=gpe.ward, shade=gpe.ward)
+```
+
+```{r}
+acp = princomp(df.final,scores=TRUE)
+plot(acp$scores[,1],acp$scores[,2],type="n",xlab="Axe1",ylab="Axe2",main="CAH")
+text(acp$scores[,1],acp$scores[,2],col=gpe.ward,cex=0.65)
+abline(v=0,lty=2,lwd=0.5);abline(h=0,lty=2,lwd=0.5)
+```
+
+### Méthode kmeans
+
+```{r warning=FALSE}
+K=6
+cl = kmeans(df.final,K,nstart=50)
+varintra = sapply(1:20,FUN=function(k){ kmeans(df.final,k,nstart=50)$tot.withinss })
+plot(varintra,type="b")
+# 6 groupes 
+```
+
+
+```{r}
+nbclustkmeans = NbClust(df.final,min.nc = 2,max.nc = 10,method="kmeans",index="all")
+```
+```{r}
+clusplot(df.final,cl$cluster, labels=4, main="kmeans", col.p=cl$cluster, color=cl$cluster, shade=cl$cluster)
+```
+```{r}
+plot(acp$scores[,1],acp$scores[,2],type="n",xlab="Axe1",ylab="Axe2",main="K-means")
+text(acp$scores[,1],acp$scores[,2],col=cl$cluster,cex=0.65)
+abline(v=2.5,lty=2,lwd=0.5);abline(h=0,lty=2,lwd=0.5)
+```
+
+## 3. Etude des groupes obtenus
+```{r}
+fviz_cluster(object = cl, data = df.final, labelsize = 0) + theme_minimal()
+```
+### interpréter les groupes
+
+```{r}
+df.final$cluster = as.factor(cl$cluster)
+interpcah = catdes(df.final,num.var = 13)
+interpcah
+```
+```{r}
+plot.catdes(interpcah,barplot=T)
+```
+
+
+```{r}
+poke_pca <- PCA(df.final %>% select(-cluster) ,graph = F)
+fviz_eig(poke_pca, ncp = 12, addlabels = T, main = "Variance explained by each dimensions")
+```
+```{r}
+fviz_pca_var(poke_pca, select.var = list(contrib =7 ), col.var = "contrib", 
+    gradient.cols = c("#00AFBB", "#E7B800", "#FC4E07"), repel = TRUE)
+```
+```{r}
+fviz_cos2(poke_pca, choice = "var", fill = "cos2") + scale_fill_viridis_c(option = "B") + 
+    theme(legend.position = "top")
+```
+```{r}
+df_pca <- data.frame(poke_pca$ind$coord[, 1:5]) %>% bind_cols(cluster = as.factor(cl$cluster)) %>% 
+    select(cluster, 1:5)
+library(plotly)
+plot_ly(df_pca, x = ~Dim.1, y = ~Dim.2, z = ~Dim.3, color = ~cluster, colors = c("black", 
+    "red", "green", "blue")) %>% add_markers() %>% layout(scene = list(xaxis = list(title = "Dim.1"), 
+    yaxis = list(title = "Dim.2"), zaxis = list(title = "Dim.3")))
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
