@@ -1,0 +1,329 @@
+---
+title: "PROJET ECONOMETRIE"
+output: html_document
+---
+# I. Présentation des données
+
+```{r setup, include=FALSE}
+
+library(tidyverse)
+library(dplyr)
+library(readxl)
+library(lmtest)
+library(ggplot2)
+library(corrplot)
+library(stargazer)
+library(performance)
+library(skimr)
+```
+
+## I.1. Choix des variables : Importation des données
+
+```{r}
+diplome <- read_excel("Data/diplome.xlsx",skip=3)
+pauvrete <- read_excel("Data/Pauvrete.xls", sheet = "ENSEMBLE", skip = 5)
+revenu <- read_excel("Data/Revenu_median_Gini.xls",sheet = "ENSEMBLE",skip = 5)
+tauxChomage <- read_excel("Data/TauxChomage.xls", sheet = "Département", skip = 3)
+delits_fr_2016 <- read.csv("Data/delits_fr_2016.csv", encoding="UTF-8", header=TRUE, row.names=1, sep=";",stringsAsFactors = FALSE)
+pop <- read_excel("Data/pop.xls", sheet = "Départements", skip = 7)
+```
+
+## I.2. Création d'une table regroupant les données utiles à l'étude
+
+### I.2.a. Choix des individus
+
+Nos individus pour ce projet sont les départements : on a choisi de garder les départements de 1 à 95 en gardant les départements de la Corse : 2A et 2B : donc nous avons 96 individus au total (car le numéro de département 20 il n'existe pas, c'est la Corse et elle a 2 numéros : 2A et 2B) (aussi, on ne garde pas les DOMTOM, c’est-à-dire les îles françaises)
+
+### I.2.b. Filtrage des variables et jointure
+
+```{r}
+diplome <- diplome[-c(97:101),-c(2,4:6)]
+names(diplome)[2]<-c('NbBrevetBepc') #Dans la variable diplome, on ne garde que la part des personnes dont le diplôme le plus élevé est le bepc ou le brevet, dans la population non scolarisée de 15 ans ou + en 2016, pour les départements de France métropolitaine, on renomme celle-ci en 'NbBrevetBepc'.
+
+pauvrete <- pauvrete[-c(97:98),-c(3:4,6:7)] #Dans la variable pauvrete, on ne garde que la colonne "Taux de pauvreté au seuil de 60% (%)" et on supprime les départements d'outre-mer 972 et 974.
+#View(pauvrete)
+
+revenu_median <- revenu[-c(97:98),c(1:2,7)] #Dans la variable revenu, on ne garde que la médiane de revenu et on supprime les departements d'outre-mer 972 et 974.
+#View(revenu_median )
+
+tauxchomagemoyen <- (tauxChomage%>%mutate(tauxchomagemoyen = rowMeans(tauxChomage[,139:142])))[,c(1,153)][-c(97:100),] #Dans la variable tauxChomage, on garde la colonne 1 -> représente le code des départements et la colonne 153 -> représente le taux de chomage moyen pour l'année 2016 (moyenne des colonnes 139 à 142), et enfin on supprime les lignes 97 à 100 car ce sont les départements d'outre-mer.
+#View(tauxchomagemoyen)
+
+population <- pop[-c(97:100), c(3,9)] #On garde la colonne population totale et on supprime les départements d'outre-mer. 
+#View(population)
+
+delits_fr_2016 <- as.data.frame(t(delits_fr_2016[c(27:30),-c(1:2)])) #On garde les lignes 27 à 30 -> 4 types différents de cambriolages, et on supprime les colonnes 1 et 2 contenant des caractères pour faire la transposée de ce tableau
+nbr_cambriolage <- (delits_fr_2016%>% mutate(Nbrcambriolage = rowSums(delits_fr_2016))) #Création d'une variable représentant la somme totale de tous les cambriolages
+row.names(nbr_cambriolage) <- c(substr(row.names(nbr_cambriolage),2,3)) #Création d'une colonne pour récupérer le code de chaque département pour faire une jointure ultérieurement
+nbr_cambriolage <- data.frame(Code = row.names(nbr_cambriolage), nbr_cambriolage) #On a les départements et la somme totale des cambriolages associée.
+#View(nbr_cambriolage)
+#Renommons les départements 1 à 9 de nbr_cambriolage pour avoir le bon format pour pouvoir faire la jointure par la suite.
+nbr_cambriolage[1,1]='01'
+nbr_cambriolage[2,1]='02'
+nbr_cambriolage[3,1]='03'
+nbr_cambriolage[4,1]='04'
+nbr_cambriolage[5,1]='05'
+nbr_cambriolage[6,1]='06'
+nbr_cambriolage[7,1]='07'
+nbr_cambriolage[8,1]='08'
+nbr_cambriolage[9,1]='09'
+```
+
+On joint toutes ces variables sur un seul et même tableau nommé data.
+
+```{r}
+data <- pauvrete%>%inner_join(diplome, by=c("CODGEO"="Code"))%>%inner_join(revenu_median, by = NULL)%>%inner_join(tauxchomagemoyen, by= c("CODGEO"="Code"))%>%inner_join(population, by = c("CODGEO"="Code département"))%>%inner_join(nbr_cambriolage[,-c(2:5)], by= c("CODGEO"="Code"))
+```
+
+### I.2.c. Création de  nouvelles variables
+
+Ajoutons une variable indicatrice, notre variable endogène Y et le revenu au carré à ce tableau.
+
+La variable indicatrice est égale à 1 si le département de l’individu appartient au code (c’est-à-dire les 30 départements où il y a le plus de cambriolages en France pour 10 000 habitants) et 0 sinon. 
+
+La variable endogène Y, c'est-à-dire la variable réponse, représente le nombre de cambriolages par département pour 10 000 habitants.
+
+Le revenu au carré va nous aider pour la précision du modèle, donc nous créons cette variable.
+
+```{r}
+data <- data%>%mutate(Y_cambriolagesur10000= data$Nbrcambriolage*10000/data$`Population totale`)
+data1<-data %>% 
+  arrange(desc(Y_cambriolagesur10000)) %>%
+  head(30)
+```
+On a alors dans notre table finale:
+```{r}
+data<-data%>%mutate(Grandmetropole= ifelse(data$CODGEO %in% data1$CODGEO,1,0) )
+data <- data%>%mutate(Rev2=Q216^2)
+data <- data%>%rename(Code=CODGEO, Nomdepartement=LIBGEO,pauvrete=TP6016,revenu_median=Q216) #pourquoi on garde nomdépartement, nbrcambriolages?
+#View(data)
+```
+
+## I.3. Equation de notre modèle
+
+Nous choisissons notre modèle de telle sorte que :
+
+Y_cambriolagesur10000 = B0 + B1pauvrete +B2diplome + B3Rev2 + B4revenu_median + B5tauxChomagemoyen + B6Grandmetropole
+
+où Y_cambriolagesur10000 est notre variable endogène et les autres variables sont les variables exogènes.
+
+# II. Statistiques descriptives
+
+## II.1. Statistiques descriptives univariées
+
+
+```{r}
+data$NbBrevetBepc <- as.numeric(as.character(data$NbBrevetBepc))
+#summary(data) 
+#Analyse la description de nos variables (types, moyennes, valeurs manquantes, etc) afin de voir si les variables sont bien formatées pour l'étude du modèle.
+skim(data)
+```
+
+```{r}
+data1<-data
+data1$Grandmetropole <- factor(data1$Grandmetropole, levels=c("0","1"), labels=c("Dep. moins cambriolés","Dep. plus cambriolés"))
+boxplot(data1$NbBrevetBepc ~ data1$Grandmetropole, main = "Part des brevets/bepc en diplôme maximal",xlab = " ", ylab = "  ", col = c( "red") )
+boxplot(data1$revenu_median ~ data1$Grandmetropole, main = "Revenu médian",xlab = " ", ylab = "  ", col = c( "red") )
+```
+
+## II.2. Statistiques descriptives bivariées
+
+```{r}
+#Décrire l’association entre des variables quantitatives:
+
+corrplot(cor(data[3:11]), type="upper",method="number", insig = "blank") 
+
+#Analyser si le modèle linéaire est adapté à l'étude de notre modèle:
+
+ggplot(data,aes(x=tauxchomagemoyen, y=Y_cambriolagesur10000))+ geom_point()+ geom_smooth(method = 'lm',color='blue') +labs(title="Cambriolages pour 10000 habitants en fonction du taux de chômage moyen",x ="Taux de chômage moyen", y = "Nombre de cambriolages pour 10000 habitants")
+```
+
+# III. Modélisation économétrie
+
+## III.1. Estimation du modèle par la méthode des MCO
+
+### III.1.a Analyse de l’équation en modèle linéaire niveau-niveau
+
+```{r}
+modele_nvnv<- lm( Y_cambriolagesur10000 ~ pauvrete + NbBrevetBepc + revenu_median + tauxchomagemoyen + Rev2 + Grandmetropole, data=data)
+summary(modele_nvnv)
+```
+```{r}
+check_model(modele_nvnv,dot_size = 2,line_size = 1,panel = FALSE)
+```
+
+### III.1.b Comparaison avec le modèle linéaire log-log
+
+```{r}
+modele_loglog<- lm( log(Y_cambriolagesur10000) ~ log(pauvrete) + log(NbBrevetBepc) + log(revenu_median) + log(tauxchomagemoyen) + log(Rev2) + Grandmetropole, data=data)
+summary(modele_loglog)
+```
+```{r}
+check_model(modele_loglog,dot_size = 2,line_size = 1,panel = FALSE)
+```
+
+```{r}
+#package = stargazer permet de formater les sorties en résultat sous des tableaux plus présentables 
+# Resultats d'estimation (modèle niveau-niveau)
+stargazer( modele_nvnv, type="text",
+          title="Resultats d'estimation (modèle niveau-niveau)", single.row=FALSE, digits=3,
+            dep.var.caption  = "L'influence des variables sur les licences modèle niveau-niveau",
+          ci=FALSE, ci.level=0.95, omit.stat=c("f", "ser"))
+# Resultats d'estimation (modèle log-log)
+stargazer( modele_loglog, type="text",
+          title="Resultats d'estimation (modèle log-log)", single.row=FALSE, digits=3,
+            dep.var.caption  = "L'influence des variables sur les licences modèle log-log",
+          ci=FALSE, ci.level=0.95, omit.stat=c("f", "ser"))
+```
+
+
+
+```{r}
+# Coefficients du modèle niveau:
+coef(modele_nvnv)
+coef(modele_loglog)
+# Valeurs prédites par le modèle :
+fitted(modele_nvnv)
+fitted(modele_loglog)
+#Résidus du modèle :
+residuals(modele_nvnv)
+```
+
+```{r}
+# Calcul de la somme des carrés des résidus :
+scrc = sum(modele_nvnv$residuals^2) 
+scrc
+```
+```{r}
+# Coefficient de corrélation du modèle :
+cor(data$Y_cambriolagesur10000,data$pauvrete+data$NbBrevetBepc+data$revenu_median+data$tauxchomagemoyen+data$Rev2+data$Grandmetropole)
+```
+
+## III.2. Test de Ramsey
+
+```{r}
+resettest(modele_nvnv)
+```
+```{r}
+yp = fitted(modele_nvnv)
+yp2 <- yp^2
+yp3 <- yp^3
+modele_nvnvt <- lm(Y_cambriolagesur10000 ~ pauvrete + NbBrevetBepc + revenu_median + tauxchomagemoyen + Rev2 + Grandmetropole + yp2 + yp3, data=data )
+summary(modele_nvnvt )
+anova(modele_nvnv,modele_nvnvt )
+```
+## III.3. Test de Chow
+
+```{r}
+fichier1 = data[data$Grandmetropole == 1,]  ## selectionne les grandmetropole #nouveau dataframe
+head(fichier1)
+GM1 = lm(Y_cambriolagesur10000 ~ pauvrete + NbBrevetBepc + revenu_median + tauxchomagemoyen+Rev2 + Grandmetropole, data=fichier1)
+summary(GM1)
+```
+```{r}
+##Somme des carrés des résidus pour les grandmetropole:
+scr1 = sum(GM1$residuals^2)
+scr1
+```
+
+```{r}
+fichier2 = data[data$Grandmetropole == 0,]  ## selectionne les non grandmetropole #nouveau dataframe
+head(fichier2)
+GM2 = lm(Y_cambriolagesur10000 ~ pauvrete + NbBrevetBepc + revenu_median + tauxchomagemoyen+ Rev2 + Grandmetropole, data=fichier2)
+summary(GM2)
+```
+
+
+```{r}
+##Somme des carrés des résidus pour les non grandmetropole:
+scr2 = sum(GM2$residuals^2) 
+scr2
+```
+```{r}
+#degres de liberte
+ddl_n = (modele_nvnv$df.residual - (GM1$df.residual + GM2$df.residual))
+ddl_n
+ddl_d = GM1$df.residual + GM2$df.residual
+ddl_d
+```
+```{r}
+#Test de Chow et p-value :
+FChow = ((scrc-(scr1+scr2))/ddl_n)/((scr1+scr2)/ddl_d) 
+FChow
+pvalue = pf(FChow,ddl_n,ddl_d,lower.tail=FALSE) 
+pvalue
+#La p-value obtenue à partir du test de Chow avec la technique des sous-échantillons est de 0.1715488 > 5%. On accepte H0.
+```
+## III.4.Analyse des résidus
+```{r}
+plot((residuals(modele_nvnv))^2~data$revenu_median, xlab="Revenu_median", ylab="Carré des résidus", main="Carré des résidus en fonction du Revenu_median")
+```
+
+## III.5. Validation des hypothèses des MCO 
+
+### III.5.a.Hétéroscédasticité 
+
+Test de white :
+```{r}
+Cam_SQ = data$revenu_median^2
+bptest(modele_nvnv, ~ revenu_median + Cam_SQ, data=data) 
+Test_White<- lm( (residuals(modele_nvnv))^2 ~ revenu_median + Cam_SQ, data=data) 
+summary(Test_White)
+
+```
+Test Goldfeld Quandt :
+```{r}
+#On suppose que la variance est fonction de la variable Revenu  
+gqtest(modele_nvnv, order.by = ~ revenu_median, fraction = 6, data=data)
+```
+### III.5.b. Autocorrélation
+```{r}
+dwtest(modele_nvnv)
+```
+
+
+
+
+
+
+
+
+ 
+
+
+ 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
