@@ -76,12 +76,6 @@ Après le nettoyage et la standardisation de nos données, on va mettre en place
 sélectionnées en se basant premièrement sur la stratégie de Ward de la CAH pour avoir une idée sur le nombre de
 groupes qu’on peut choisir, puis on va appliquer l’algorithme de K-means.
 
-On remarque une perte d’inertie rapide entre le premier et le troisième saut, nous remarquons qu’une classification en
-trois groupes est possible.
-En remarque que le dendrogramme au-dessus, qui représente les partitions obtenues avec ces trois groupes ne sont
-pas de même proportion. Deux groupes, c'est proche au niveau de la taille, puis un autre plus petit.
-Après avoir une idée générale sur le nombre de groupes à choisir avec la stratégie de Ward en se basant sur l’inertie
-intra-classe, on va appliquer l'algorithme de K-means pour requalifier les données qui auraient été mal placées.
 ### Classification finale
 Comparaison K-means et CAH:
 
