@@ -93,7 +93,7 @@ suite.
 On observe sur ce clusplot obtenu via la méthode K-means, qu’on a bien six groupes distincts.
 
 <div align="center">
-<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Classification/Image/Plot.png" width="70%" style="min-height:'250px'"/>
+<img src="https://raw.githubusercontent.com/nmh4598/R-Master/main/S2/Classification/Image/Plot.png" width="70%" style="min-height:'250px'"/>
 </div>
 
 On notera qu’avec nos données, 37,2 % des variations sont portées par les deux premiers axes principaux. Non
@@ -113,7 +113,7 @@ On cherche à savoir ce qui caractérise les six groupes que l’on a obtenus af
 construits.
 
 <div align="center">
-<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Classification/Image/Caract%C3%A9ristiques.png" width="45%" style="min-height:'250px'"/>
+<img src="https://raw.githubusercontent.com/nmh4598/R-Master/main/S2/Classification/Image/Caract%C3%A9ristiques.png" width="45%" style="min-height:'250px'"/>
 </div>
 
 Nous mettrons en évidence les caractéristiques intéressantes de chaque groupe comme suit:
@@ -150,7 +150,7 @@ On cherche maintenant à représenter les informations détenues par les donnée
 ### Représentation sur les axes principaux d’une ACP
 
 <div align="center">
-<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Classification/Image/PCA.png" width="45%" style="min-height:'250px'"/>
+<img src="https://raw.githubusercontent.com/nmh4598/R-Master/main/S2/Classification/Image/PCA.png" width="45%" style="min-height:'250px'"/>
 </div>
 
 Le graphique ci-dessus nous permet d’observer que 48,8% et 58.8% des variances sont expliquées et conservées par
@@ -161,7 +161,7 @@ On peut donc utiliser ces axes afin de pouvoir représenter au mieux les donnée
 ### Analyse de corrélation des variables avec les axes principaux
 
 <div align="center">
-<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Classification/Image/Var-PCA.png" width="45%" style="min-height:'250px'"/>
+<img src="https://raw.githubusercontent.com/nmh4598/R-Master/main/S2/Classification/Image/Var-PCA.png" width="45%" style="min-height:'250px'"/>
 </div>
 
 On remarque que :
@@ -175,7 +175,7 @@ création du deuxième axe principal.
 ### Répartition des individus dans le plan factoriel
 
 <div align="center">
-<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Classification/Image/Dim%203.png" width="45%" style="min-height:'250px'"/>
+<img src="https://raw.githubusercontent.com/nmh4598/R-Master/main/S2/Classification/Image/Dim%203.png" width="45%" style="min-height:'250px'"/>
 </div>
 
 On représente ici les partitions des classes obtenues, sur trois dimensions.
