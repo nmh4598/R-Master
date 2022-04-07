@@ -15,7 +15,7 @@ Apparaît dans cette section une carte des pays du monde entier, ici apparaissen
 La couleur des pays changera selon ces deux options, représentant le niveau d'émissions de chaque pays.
 Nous nous concentrons sur les trois principaux gaz à effet de serre, CO2, N2O et méthane de chaque pays, ainsi que le total de ces trois gaz.
 <div align="center">
-<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Rshiny/Climate/Image/Map.png" style="min-height:'250px'"/>
+<img src="https://raw.githubusercontent.com/nmh4598/R-Master/main/S2/Rshiny/Climate/Image/Map.png" style="min-height:'250px'"/>
 </div>
 - Interprétation sur un exemple: 
 Lorsque les choix pour la carte sont : Année = 2018 et type de gaz à effet de serre = Co2
@@ -25,7 +25,7 @@ Sur la base de ce résultat, nous pouvons voir que par exemple, la Chine et les 
 ## Statistiques
 ### CO2 and GHG
 <div align="center">
-<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Rshiny/Climate/Image/Statistiques.png" style="min-height:'250px'"/>
+<img src="https://raw.githubusercontent.com/nmh4598/R-Master/main/S2/Rshiny/Climate/Image/Statistiques.png" style="min-height:'250px'"/>
 </div>
 
 - Choose CO2 Origin
@@ -49,7 +49,7 @@ Pour les deux autres graphiques en haut, représentant les émissions de CO2 et 
 Cette section nous permet de comparer deux ou plusieurs pays, ce qui permet de comparer les progrès en matière de réduction des émissions. Nous fournissons de nombreuses comparaisons telles que les types de CO2 et les sources de GES.
 
 <div align="center">
-<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Rshiny/Climate/Image/Comparaison.png" style="min-height:'250px'"/>
+<img src="https://raw.githubusercontent.com/nmh4598/R-Master/main/S2/Rshiny/Climate/Image/Comparaison.png" style="min-height:'250px'"/>
 </div>
 
 On observe que la quantité de gaz émise par la Chine est très importante, il y a une énorme différence par rapport aux autres pays, exemple des pays développés en Europe comme la France et l'Allemagne, même, sa tenance (de Chine) a fortement augmenté sur la période 2000-2010.
@@ -58,7 +58,7 @@ On peut dire que des pays comme la France, l'Allemagne, l'Italie font un excelle
 
 ## Les données
 <div align="center">
-<img src="https://github.com/nmh4598/R-Master/blob/main/S2/Rshiny/Climate/Image/Dataset.png" style="min-height:'250px'"/>
+<img src="https://raw.githubusercontent.com/nmh4598/R-Master/main/S2/Rshiny/Climate/Image/Dataset.png" style="min-height:'250px'"/>
 </div>
 
 Nous utilisons les données de Our World In Data et de Climate Watch Data. Dans ce qui suit, nous présenterons les trois tables de données nettoyées:
